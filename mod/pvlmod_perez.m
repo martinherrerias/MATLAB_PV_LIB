@@ -1,9 +1,16 @@
 function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,sunel,sunaz,albedo,varargin)
 % [GTI,ISO,CS,HB,ALB,BTI] = PVLMOD_PEREZ(SURFTILT,SURFAZ,DHI,BNI,ENI,SUNEL,SUNAZ,ALBEDO,MODEL)
 %
-%   Estimate non-shaded global tilted irradiance based one of the Perez models.
 %   Adaptation of PVPMC's PV_LIB original PVL_PEREZ(...) function, allowing for input arrays of
 %   any size or dimension (singleton-expansion-compatible)* with missing values
+%
+% [GTI,ISO,CS,HB,ALB,BTI,SE] = PVLMOD_PEREZ(...) - estimate model uncertainty SE from the ensemble
+%   of coefficient sets.
+%
+% [GTI,ISO,CS,HB,ALB,BTI,SE] = PVLMOD_PEREZ(...,MODEL,METHOD,COV,SE) - Allows the use of a custom
+%   coefficient set (passed as MODEL), with known covariance and standard error. See PEREZ_FIT and
+%   PVLMOD_PEREZCOEFFS.
+%
 %
 %   SURFTILT - Surface tilt (elevation) angles (degrees)
 %   SURFAZ - Surface azimuth angles (degrees) any convention, consistent with SUNAZ (§)
@@ -27,26 +34,6 @@ function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,s
 %       namely S = COMPATIBLESIZE(SURFTILT,...,ALBEDO,'-size').
 %       e.g. if DHI,BNI,... are [N,1] vectors and SURFEL, SURFAZ are [1,M] vectors, results will
 %       be [N,M] matrices. 
-%
-% TODO: DOCUMENT UNCERTAINTY!
-%
-% CHANGES WITH RESPECT TO PVL_PEREZ: aside from input-output format, and the fact albedo and beam
-%   components are included, the only change with respect to PV_LIB's PVL_PEREZ function is the use
-%   of constant air mass at horizon (37.0) for all points with SUNEL < 0.
-%
-% References
-%   [1] Loutzenhiser P.G. et. al., 2007. Empirical validation of models to compute
-%   solar irradiance on inclined surfaces for building energy simulation, 
-%   Solar Energy vol. 81. pp. 254-267.
-%   [2] Perez, R., Seals, R., Ineichen, P., Stewart, R., Menicucci, D., 1987. A new
-%   simplified version of the Perez diffuse irradiance model for tilted
-%   surfaces. Solar Energy 39 (3), 221–232.
-%   [3] Perez, R., Ineichen, P., Seals, R., Michalsky, J., Stewart, R., 1990.
-%   Modeling daylight availability and irradiance components from direct
-%   and global irradiance. Solar Energy 44 (5), 271–289.
-%   [4] Perez, R. et. al 1988. The Development and Verification of the
-%   Perez Diffuse Radiation Model,.SAND88-7030, Sandia National
-%   Laboratories.
 %
 % See also: PVL_PEREZ, PVLMOD_PEREZCOEFFS, PVLMOD_HAYDAVIES, POAIRRADIANCE, EFFECTIVESOLARPOSITION
 

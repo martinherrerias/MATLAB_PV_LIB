@@ -1,71 +1,65 @@
  function [F1,F2,s11,s22,rho,Se] = pvlmod_perezcoeffs(BNI,DHI,GNE,sunel,model,method,varargin)
 % [F1,F2] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL)
 % [F1,F2] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,MODEL)
-% [F1,F2,S11,S22,RHO,SE] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,MDL,METHOD)
-% [F1,F2,S11,S22,RHO,SE] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,FF,METHOD,COV,SE)
+% [F1,F2,S11,S22,RHO,SE] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,MDL,METHOD) (§)
+% [F1,F2,S11,S22,RHO,SE] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,FF,METHOD,COV,SE) (§)
 %
 %   Returns the anisotropy indices for Circumsolar and Horizon-Brightening irradiance components
-%   according to one of the Perez models.
-%   Adaptation of PVPMC's PV_LIB original pvl_perez(...) function, returning coefficients only.
+%   according to one of the Perez model coefficient sets. The first two syntaxes are simple
+%   adaptations of PVPMC's PV_LIB original pvl_perez(...) function, returning coefficients only.
 %
-%	BNI - array of Beam Normal Irradiances
-%	DHI - array of Diffuse Horizontal Irradiances
-%	GNE - array of Normal Extraterrestrial irradiances
-%	SUNEL - array of apparent solar elevation angles (degrees)
+%   Syntaxes marked with (§) dettach from the original model, to use smooth interpolation instead
+%   of binning, and/or estimate model uncertainty.
+%
+%   See PVLMOD_PEREZ to calculate tilted irradiance using F1, F2
+%
+% INPUT:
+%   BNI - array of Beam Normal Irradiances
+%   DHI - array of Diffuse Horizontal Irradiances
+%   GNE - array of Normal Extraterrestrial irradiances
+%   SUNEL - array of apparent solar elevation angles (degrees)
 %
 %       NOTE: arrays can be any size or dimension, but singleton-expansion-compatible 
 %
 %   MODEL - character string, Perez coefficient set. Default is 'allsitescomposite1990', other
-%   options are {'allsitescomposite1988','sandiacomposite1988','usacomposite1988','france1988',
-%   'phoenix1988','elmonte1988','albuquerque1988','capecanaveral1988','albany1988'}
+%       options are {'allsitescomposite1988','sandiacomposite1988','usacomposite1988','france1988',
+%       'phoenix1988','elmonte1988','albuquerque1988','capecanaveral1988','albany1988'}
 %
-%   ATTENTION: Leaving out 'osage1988'(*)
+%       Alternatively, MODEL can be a 6x8 matrix of custom-fit coefficients (see PEREZ_FIT)
 %
-%   Alternatively, FF can be a 6x8 matrix of custom-fit coefficients (see PEREZ_FIT)
+%   METHOD (optional, EXPERIMENTAL) - using 'linear', 'makima', etc. as oposed to 'bin' (default), 
+%       defines an interpolation method to replace the hard binning on 'epsilon' of the original 
+%       Perez et al. model. This reduces artifacts (discontinuities) in the solutions, although
+%       it detaches from the canonical model implementation.
+%
+%   COV,SE - use 48x48 covariance matrix COV for the model coefficients, and 8-vector of standard
+%       errors SE, as returned by PEREZ_FIT, to estimate model uncertainty.
+%
+% OUTPUT:
 %
 %   F1 - Circumsolar Anisotropy index, F1 = 0 for overcast, F1 = 1 for black sky
 %   F2 - Horizon-Brightening Anisotropy index, F2 = 0, no brightening
 %
-%   See PVLMOD_PEREZ to calculate tilted irradiance using F1, F2
-%
-% CHANGES WITH RESPECT TO PVL_PEREZ: aside from input-output, cleanup, and the important fact that
-%   the actual transposition is left outside the function, the only change with respect to 
-%   PV_LIB's PVL_PEREZ function is the use of constant air mass at horizon (37.0) for all points 
-%   with SUNEL < 0.
-%
-% [F1,F2,S11,S22,RHO] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,MDL,METHOD) - estimate covariance 
-%   terms for F1 and F2 based on [6,6,8] covariance matrix stack V. For each point k:
+%   S11,S22,RHO,SE - estimated uncertainties, uncertainty correlation, and standard error of 
+%       the resulting coefficients F1, F2, so that for each point k:
 %
 %       cov(F1(k),F2(k)) = s[1,r;r,1]s' for s = [S11(k),S22(k)]' and r = RHO(k)
 %
-% [F1,F2,S11,S22,RHO,SG] = PVLMOD_PEREZCOEFFS(BNI,DHI,GNE,SUNEL,MDL,V,SE)
+%     If COV and SE are not provided as inputs, these values are estimated from the ensemble 
+%     of all but one(*) coefficient sets, without correction for over- or under-dispersion.
 %
-% References
-%   [1] Loutzenhiser P.G. et. al., 2007. Empirical validation of models to compute
-%   solar irradiance on inclined surfaces for building energy simulation, 
-%   Solar Energy vol. 81. pp. 254-267.
-%   [2] Perez, R., Seals, R., Ineichen, P., Stewart, R., Menicucci, D., 1987. A new
-%   simplified version of the Perez diffuse irradiance model for tilted
-%   surfaces. Solar Energy 39 (3), 221–232.
-%   [3] Perez, R., Ineichen, P., Seals, R., Michalsky, J., Stewart, R., 1990.
-%   Modeling daylight availability and irradiance components from direct
-%   and global irradiance. Solar Energy 44 (5), 271–289.
-%   [4] Perez, R. et. al 1988. The Development and Verification of the
-%   Perez Diffuse Radiation Model,.SAND88-7030, Sandia National
-%   Laboratories.
+% See also: PVL_PEREZ, PVLMOD_PEREZ, PVLMOD_PEREZGEOM, PVLMOD_HAYDAVIES
 %
-% See also: PVL_PEREZ, PVLMOD_PEREZ, PVLMOD_HAYDAVIES, POAIRRADIANCE
-
 % (*) Leaving 'osage1988' out! From Perez et al. (1988):
-% "With the exception of Osage, data are representativeof most solar geometries"
-% "the very poor results obtained withthe Osage-based model in Albuquerque and Phoenix are simply
+% "With the exception of Osage, data are representativeof most solar geometries [...]
+% the very poor results obtained withthe Osage-based model in Albuquerque and Phoenix are simply
 % due to the fact that Osage, unlike the two southwestern sites, included only very few high-
 % epsilon events andmean, because of the least square fitting method used to derive the coefficients,
 % the resolution achieved for such events is totally unsatisfactory and allows for important 
 % distortions. 
 % Likewise, the small performance deterioration caused in all SNLA sites by the Albany-based model
 % may be explained, in part, by the higher latitude of this site and the corresponding lack of very
-% low solar zenith angle events.
+% low solar zenith angle events."
 
     MODELS = {'allsitescomposite1990','allsitescomposite1988','sandiacomposite1988',...
              'usacomposite1988','france1988','phoenix1988','elmonte1988','albuquerque1988',...
@@ -107,7 +101,8 @@
         Se = [20,40,50,50,50,40,25,15]; 
     end
         
-    AMr = pvl_relativeairmass(max(0,90-sunel));
+    AMr = zeros(size(sunel));
+    AMr(:) = pvl_relativeairmass(max(0,90-sunel(:)));
 
     kappa = 1.041; 
     zenith = (90-sunel)*pi/180; 
@@ -216,13 +211,6 @@
             if ~isscalar(Se), Se = Se(ebin); end
         end
     otherwise
-        % in = epsilon <= Xc(end);
-        % F1 = F1b(:,end);
-        % F2 = F2b(:,end);
-        % for j = find(in)'
-        %     F1(j) = interp1(Xc,F1b(j,:),epsilon(j),method);
-        %     F2(j) = interp1(Xc,F2b(j,:),epsilon(j),method);
-        % end
         
         %   [f, gof] = fit( (1:8)',X0(1:8)'-1,'power1','startpoint',[1e-3,3]);
         %   Xc = round(feval(f,1.5:8.5)+1,3)
@@ -233,14 +221,7 @@
         
         F1 = dot(ebin,F1b,2);
         F2 = dot(ebin,F2b,2);
-        
-        % F1 = zeros(n,1);
-        % F2 = zeros(n,1);
-        % for j = 1:n
-        %     F1(j) = interp1(Xc,F1b(j,:),epsilon(j),method,'extrap');
-        %     F2(j) = interp1(Xc,F2b(j,:),epsilon(j),method,'extrap');
-        % end
-        
+
         if nargout > 2
         % Estimate covariance of F1,F2 based on covariance V of F 
         % If F = [F11,F12,F13,F21,F22,F23]', then [F1,F2]' = [a',0; 0,a']*F, with a' = [1,del,z]
@@ -280,80 +261,6 @@
         rho = revertfilter(rho,filter);
         if ~isscalar(Se), Se = revertfilter(full(Se),filter); end
     end
-    
-%     F1(DHI == 0) = 0;
-%     F2(DHI == 0) = 0;
-    
-%     % Select which bin e falls into (simplified from pvl_perez)
-%     ebin = discretize(epsilon,[1, 1.065, 1.23, 1.5, 1.95, 2.8, 4.5, 6.2, Inf]);
-%     
-%     ebinfilter = ebin > 0;
-%     n = nnz(ebinfilter);
-% 
-%     [F1,F2,s11,s22,rho]
-%     
-%     if isnumeric(model)
-%     % Use custom (fitted) coefficient matrix F = [F1c,F2c]'
-%         assert(isequal(size(model),[6,8]),'Expecting 6 x 8 matrix');
-%         F1c = model(1:3,:)';
-%         F2c = model(4:6,:)';
-%     else
-%     % The various possible sets of Perez coefficients are contained
-%     % in a subfunction to clean up the code.
-%         [F1c,F2c] = PerezCoefficients(model);
-%     end
-%     
-%     b = ebin(ebinfilter);
-% 
-%     F1 = zeros(sz);
-%     F1(ebinfilter) = F1c(b,1) + F1c(b,2).*delta(ebinfilter) + F1c(b,3).*zenith(ebinfilter);
-%     F1(F1<0)=0;
-% 
-%     F2 = zeros(sz);
-%     F2(ebinfilter) = F2c(b,1) + F2c(b,2).*delta(ebinfilter) + F2c(b,3).*zenith(ebinfilter);
-%     
-%     s11 = NaN(sz);
-%     s22 = NaN(sz);
-%     rho = NaN(sz);
-%     if ~isempty(V)
-%     % Estimate covariance of F1,F2 based on covariance V of F 
-%         assert(isequal(size(V),[6,6,8]),'Expecting 6 x 6 x 8 covariance matrix stack');
-% 
-%         % If F = [F11,F12,F13,F21,F22,F23]', then [F1,F2]' = [a',0; 0,a']*F, with a' = [1,del,z]
-%         % Each element of the covariance of [F1 F2]' is then a'a.*Qjk, where V = [Q11,Q12;Q21;Q22]
-%         a = [ones(n,1),delta(ebinfilter),zenith(ebinfilter)];
-%         aTa = repmat(a,1,3).*repelem(a,1,3);
-%         
-%         V11 = reshape(V(1:3,1:3,:),9,8)';
-%         V22 = reshape(V(4:6,4:6,:),9,8)';
-%         V12 = reshape(V(1:3,4:6,:),9,8)';
-% 
-%         s11(ebinfilter) = sqrt(dot(aTa,V11(b,:),2));
-%         s22(ebinfilter) = sqrt(dot(aTa,V22(b,:),2));
-%         rho(ebinfilter) = dot(aTa,V12(b,:),2)./(s11(ebinfilter).*s22(ebinfilter));
-%     end
-%     
-%     sg = NaN(sz);
-%     if ~isempty(se)
-%         assert(numel(se) == 8,'Expecting 8 element standard-error vector');
-%         sg(ebinfilter) = se(b);
-%     end
-% end
-
-    
-% function [F1,F2,s11,s22,rho] = smooth_coeffs(epsilon,delta,zenith,mdl,method,varargin)
-% [F1,F2,s11,s22,rho] = smooth_coeffs(EPSILON,DELTA,ZENITH,MDL,METHOD)
-%   Return circumsolar (F1) and horizon-brightening (F2) coefficients for sky clearness EPSILON, 
-%   sky brightness DELTA and zenith angle ZENITH, according to the coefficient set or operator(*) 
-%   MDL, and (optionally) using interpolation according to METHOD instead of binning and lookup.
-%
-%   (*) "operators" {'mean','max','median','min'} calculate F1, F2 accross all coefficient sets,
-%   and return an ensemble
-%
-% [F1,F2,s11,s22,rho] = smooth_coeffs(EPSILON,DELTA,ZENITH,'custom',METHOD,FF,V) - use custom
-%   coefficient set FF with variance V, see perez_fit
-
-    
 end
 
 function [xTx,r,c] = xTx_triu_elements(x)
