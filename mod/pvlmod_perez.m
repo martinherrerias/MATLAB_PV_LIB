@@ -11,7 +11,6 @@ function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,s
 %   coefficient set (passed as MODEL), with known covariance and standard error. See PEREZ_FIT and
 %   PVLMOD_PEREZCOEFFS.
 %
-%
 %   SURFTILT - Surface tilt (elevation) angles (degrees)
 %   SURFAZ - Surface azimuth angles (degrees) any convention, consistent with SUNAZ (§)
 %	DHI - Diffuse Horizontal Irradiances
@@ -24,6 +23,15 @@ function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,s
 %   MODEL - character string, Perez coefficient set. Default is 'allsitescomposite1990', other
 %   options are {'allsitescomposite1988','sandiacomposite1988','usacomposite1988','france1988',
 %   'phoenix1988','elmonte1988','osage1988','albuquerque1988','capecanaveral1988','albany1988'}
+%   Alternatively, MODEL can be a 6x8 matrix of custom-fit coefficients (see PEREZ_FIT)
+%
+%   METHOD (optional, EXPERIMENTAL) - using 'linear', 'makima', etc. as oposed to 'bin' (default), 
+%       defines an interpolation method to replace the hard binning on 'epsilon' of the original 
+%       Perez et al. model. This reduces artifacts (discontinuities) in the solutions, although
+%       it detaches from the canonical model implementation.
+%
+%   COV,SE - use 48x48 covariance matrix COV for the model coefficients, and 8-vector of standard
+%       errors SE, as returned by PEREZ_FIT, to estimate model uncertainty.
 %
 %  GTI - Global (unshaded) tilted irradiance
 %  ISO, CS, HB - Isotropic, Circumsolar, Horizon-Brightening components
@@ -71,6 +79,7 @@ function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,s
 
     if nargout > 6
     % Does not include covariance (several sensors at the same time)!
+        Se = Se.*sind(surftilt);
         Se = sqrt(Se.^2+(sF1.*A).^2+(sF2.*B).^2 + 2*rF1F2.*A.*B.*sF1.*sF2); 
     end
 end

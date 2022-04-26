@@ -94,6 +94,7 @@
     if numel(varargin) > 1 && ~isempty(varargin{2})
         Se = varargin{2};
         validateattributes(Se,{'numeric'},{'real','finite','vector','nonnegative'},'','SE');
+        Se = double(Se);
         assert(isscalar(Se) || numel(Se) == 8,'Expecting scalar or 8-vector SE');
         if isscalar(Se), Se = repmat(Se,1,8); end
     else
@@ -133,7 +134,7 @@
         return;
     end
     epsilon = epsilon(filter);
-    a = [ones(n,1),delta(filter),zenith(filter)];
+    a = double([ones(n,1),delta(filter),zenith(filter)]);
     clear delta zenith
 
     if ~any(strcmpi(MODELS,model)) || (nargout > 2 && isempty(V))
@@ -217,7 +218,7 @@
         Xc = [1.015;1.091;1.295;1.708;2.425;3.552;5.204;7.505]; % bin centers
             
         ebin = interpmatrix(epsilon,Xc,'extrap','nearest','method1d',method);
-        ebin = ebin./sum(ebin,2);
+        ebin = double(ebin./sum(ebin,2));
         
         F1 = dot(ebin,F1b,2);
         F2 = dot(ebin,F2b,2);
