@@ -81,7 +81,7 @@
     else
         model = parselist(model,MODELS);
     end
-    if nargin < 6, method = 'bin'; end
+    if nargin < 6 || isempty(method), method = 'bin'; end
 
     if numel(varargin) > 0 && ~isempty(varargin{1})
         validateattributes(varargin{1},{'numeric'},{'real','finite','2d','size',[48,48]},'','V');
@@ -198,13 +198,26 @@
         F2 = F2b(idx);
         
         if nargout > 2      
-            % Variance elements must be weighted by repmat([1,d,z]·[1,d,z]',8,8) 
-            % weight' 
-            [aTa,r,c] = xTx_triu_elements(a);
+        % Estimate covariance C of [F1,F2] based on covariance V of F.
+        % If [F1,F2]' = A*F = [a',0; 0,a']*F, with a' = [1,del,z], then C = A*Q*A',
+        % Where Q is the subset of V for the corresponding bin of a.
+        % The following code is equivalent to:
+        %
+        %     for j = 1:n
+        %         V_rows_j = (ebin(j) - 1)*6 + (1:6);
+        %         Q = V(V_rows_j,V_rows_j);
+        %         A = [a(j,:),0,0,0; 0,0,0,a(j,:)];
+        %         C = A*Q*A';
+        %         s11(j) = sqrt(C(1,1));
+        %         s22(j) = sqrt(C(2,2));
+        %         rho(j) = C(1,2)./(s11(j).*s22(j));
+        %     end
+
+            [aTa,r,c] = quadform(a);
             r = (ebin - 1)*3 + r';
             c = (ebin - 1)*3 + c';
             idx = sub2ind([24,24],r,c);
-            
+
             s11 = sqrt(dot(aTa,V11(idx),2));
             s22 = sqrt(dot(aTa,V22(idx),2));
             rho = dot(aTa,V12(idx),2)./(s11.*s22);
@@ -229,7 +242,7 @@
         % Each element of the covariance of [F1 F2]' is then a'a.*Qjk, where V = [Q11,Q12;Q21;Q22]
 
             
-            [mult,r,c] = xTx_triu_elements(ones(1,24));
+            [mult,r,c] = quadform(ones(1,24));
             idx = sub2ind([24,24],r,c)';
             
             ra = mod(r-1,3)+1;
@@ -262,15 +275,14 @@
         rho = revertfilter(rho,filter);
         if ~isscalar(Se), Se = revertfilter(full(Se),filter); end
     end
-end
+ end
 
-function [xTx,r,c] = xTx_triu_elements(x)
-% For a row vector x, return a list of elements of triu(x'x), with all off-diagonal elements
-% multiplied by 2, so that for a symmetric matrix B, B·(x'x) = dot(B(r,c),xTx)
-% For a matrix X, do the same for each row X(:,j).
+function [xTx,r,c] = quadform(X)
+% For each row vector x of X return a list of elements of (x'x), and their corresponding row and 
+% column indices (r,c), so that the quadratic form Q = (x'A x) = dot(A(r,c),xTx)
 
-    n = size(x,2);
-    r = nonzeros(triu(repmat(1:n,n,1)'));
-    c = nonzeros(triu(repmat(1:n,n,1)));
-    xTx = x(:,r).*x(:,c).*(1 + (r ~= c)');
+    n = size(X,2);
+    r = repelem((1:n)',n,1);
+    c = repmat((1:n)',n,1);
+    xTx = X(:,r).*X(:,c);
 end

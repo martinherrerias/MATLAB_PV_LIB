@@ -58,7 +58,7 @@ function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,s
         [F1,F2] = pvlmod_perezcoeffs(BNI,DHI,ENI,sunel,varargin{:});
     end
     
-    [a,~,ISO,CS,HB,ALB] = pvlmod_perezgeom(surftilt,surfaz,sunel,sunaz);
+    [a,~,Fiso,Fcs,Fhb,Falb] = pvlmod_perezgeom(surftilt,surfaz,sunel,sunaz);
     
     % Check input that is not already parsed by PVLMOD_PEREZCOEFFS
     assert(isnumeric(albedo),'Non-numeric args');
@@ -66,21 +66,22 @@ function [GTI,ISO,CS,HB,ALB,BTI,Se] = pvlmod_perez(surftilt,surfaz,DHI,BNI,ENI,s
 
     GHI = max(0,DHI + BNI.*sind(sunel));
     
-    A = DHI.*(CS - ISO);
-    B = DHI.*HB;
-    
-    ISO = (1-F1).*DHI.*ISO;   %	Isotropic component: (1-F1)·DHI·(1 + k'u)/2	
-    CS = F1.*DHI.*CS;         % Circumsolar component: F1·DHI·a/b
-    HB = F2.*DHI.*HB;         % Hor. brightening component: F2·DHI·sqrt(1-(k'u)²) 
-    BTI = BNI.*a;             % Beam component
-    ALB = albedo.*GHI.*ALB;   %	Albedo component: rho·GHI·(1 - k'u)/2
+    ISO = (1-F1).*DHI.*Fiso;   %	Isotropic component: (1-F1)·DHI·(1 + k'u)/2	
+    CS = F1.*DHI.*Fcs;         % Circumsolar component: F1·DHI·a/b
+    HB = F2.*DHI.*Fhb;         % Hor. brightening component: F2·DHI·sqrt(1-(k'u)²) 
+    BTI = BNI.*a;              % Beam component
+    ALB = albedo.*GHI.*Falb;   %	Albedo component: rho·GHI·(1 - k'u)/2
     
     GTI = ISO + CS + HB + ALB + BTI;
 
     if nargout > 6
     % Does not include covariance (several sensors at the same time)!
+    
+        A = DHI.*(Fcs - Fiso);
+        B = (DHI.*Fhb);
+    
         Se = Se.*sind(surftilt);
-        Se = sqrt(Se.^2+(sF1.*A).^2+(sF2.*B).^2 + 2*rF1F2.*A.*B.*sF1.*sF2); 
+        Se = sqrt(Se.^2+(sF1.*A).^2+(sF2.*B).^2 + 2*rF1F2.*A.*B.*sF1.*sF2);
     end
 end
 
