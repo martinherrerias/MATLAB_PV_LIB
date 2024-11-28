@@ -81,7 +81,7 @@ delta_t = compatiblesize(delta_t,Time.year,Location.latitude,Location.longitude,
 if nargout > 2
     if isempty(pressure) && nargout > 2
         Location = parselocation(Location,'-soft'); % assume altitude = 0 with warning, if missing
-        pressure = pvl_alt2pres(Loc.altitude)/100;
+        pressure = pvl_alt2pres(Location.altitude)/100;
     else
         Location = parselocation(Location);
     end
